@@ -75,10 +75,9 @@ pipeline {
                     def repo   = 'catalogue-unit-tests'
                     def apiUrl = "https://api.github.com/repos/${owner}/${repo}/dependabot/alerts"
 
-                    withCredentials([usernamePassword(
-                        credentialsId: 'github-token',  // ← your Jenkins credential ID
-                        usernameVariable: 'GH_USER',
-                        passwordVariable: 'GH_TOKEN'
+                    withCredentials([string(
+                        credentialsId: 'github-token',  // ← your Secret Text credential ID
+                        variable:      'GH_TOKEN'
                     )]) {
                         def foundAlerts = []
 
