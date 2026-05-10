@@ -33,15 +33,15 @@ pipeline {
                 }
             }
         }
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    sh """
-                        npm install 
-                    """
-                }
-            }
-        }
+        // stage('Install Dependencies') {
+        //     steps {
+        //         script {
+        //             sh """
+        //                 npm install 
+        //             """
+        //         }
+        //     }
+        // }
         stage('Unit tests') {
             steps {
                 script{
@@ -129,6 +129,47 @@ pipeline {
                         }
 
                         echo '✅ Dependabot check passed — no HIGH or CRITICAL alerts.'
+                    }
+                }
+            }
+        }
+        stage('Trivy OS Scan') {
+            steps {
+                script {
+                    // Generate table report
+                    sh """
+                        trivy image \
+                            --scanners vuln \
+                            --pkg-types os \
+                            --severity HIGH,MEDIUM \
+                            --format table \
+                            --output trivy-os-report.txt \
+                            --exit-code 0 \
+                            ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                    """
+
+                    // Print table to console
+                    sh 'cat trivy-os-report.txt'
+
+                    // Fail pipeline if vulnerabilities found
+                    def scanResult = sh(
+                        script: """
+                            trivy image \
+                                --scanners vuln \
+                                --pkg-types os \
+                                --severity HIGH,MEDIUM \
+                                --format table \
+                                --exit-code 1 \
+                                --quiet \
+                                ${ACC_ID}.dkr.ecr.${region}.amazonaws.com/roboshop/catalogue:${appVersion}
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (scanResult != 0) {
+                        error "🚨 Trivy found HIGH/MEDIUM OS vulnerabilities. Pipeline failed."
+                    } else {
+                        echo "✅ No HIGH or MEDIUM OS vulnerabilities found. Pipeline continues."
                     }
                 }
             }
